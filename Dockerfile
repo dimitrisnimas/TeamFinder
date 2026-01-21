@@ -25,6 +25,7 @@ RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
 RUN turbo build --filter=api
 # Verify build output
 RUN ls -la apps/api/dist || echo "dist folder not found!"
+RUN find apps/api/dist -name "main.js" || echo "main.js not found!"
 
 # 4. Run the app
 FROM base AS runner
