@@ -26,12 +26,12 @@ RUN turbo build --filter=api
 
 # 4. Run the app
 FROM base AS runner
-WORKDIR /app
+WORKDIR /app/apps/api
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nestjs
 USER nestjs
 
-COPY --from=builder /app .
+COPY --from=builder /app ../../
 
 EXPOSE 3000
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["node", "dist/main.js"]
