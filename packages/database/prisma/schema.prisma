@@ -1,0 +1,143 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  DEVELOPER
+  SUPERADMIN
+  ADMIN
+  STAFF
+  PLAYER
+}
+
+enum GameType {
+  PUBLIC
+  PRIVATE
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hashed
+  firstName String?
+  lastName  String?
+  phone     String?
+  
+  roles     Role[]   @default([PLAYER])
+
+  // Relations
+  ownedPitches Booking[] @relation("UserBookings")
+  matches      GamePlayer[]
+  
+  managedPitches Pitch[] @relation("PitchOwner")
+  
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Pitch {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  address     String
+  city        String
+  latitude    Float?
+  longitude   Float?
+  
+  sport       String   // e.g. "Football", "Tennis"
+  pricePerHour Decimal
+  currency    String   @default("EUR")
+  
+  photos      String[] // URLs
+  
+  ownerId     String
+  owner       User     @relation("PitchOwner", fields: [ownerId], references: [id])
+  
+  bookings    Booking[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Booking {
+  id        String        @id @default(uuid())
+  pitchId   String
+  pitch     Pitch         @relation(fields: [pitchId], references: [id])
+  
+  userId    String
+  user      User          @relation("UserBookings", fields: [userId], references: [id])
+  
+  startTime DateTime
+  endTime   DateTime
+  
+  status    BookingStatus @default(PENDING)
+  totalPrice Decimal
+  
+  game      Game?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Game {
+  id        String   @id @default(uuid())
+  bookingId String   @unique 
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  
+  type      GameType @default(PUBLIC)
+  
+  minPlayers Int?
+  maxPlayers Int?
+  
+  players   GamePlayer[]
+  messages  Message[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GamePlayer {
+  id        String   @id @default(uuid())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id])
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  status    String   // JOINED, INVITED
+  
+  @@unique([gameId, userId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  
+  senderId  String
+  sender    User     @relation("SentMessages", fields: [senderId], references: [id])
+  
+  // Game chat
+  gameId    String?
+  game      Game?    @relation(fields: [gameId], references: [id])
+  
+  // 1:1 chat
+  receiverId String?
+  receiver   User?   @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  
+  createdAt DateTime @default(now())
+}
