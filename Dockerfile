@@ -23,15 +23,18 @@ COPY --from=prune /app/out/full/ .
 # Generate Prisma Client explicitly to ensure it exists
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
 RUN turbo build --filter=api
+# Verify build output
+RUN ls -la apps/api/dist || echo "dist folder not found!"
 
 # 4. Run the app
 FROM base AS runner
-WORKDIR /app/apps/api
+WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nestjs
+
+COPY --from=builder --chown=nestjs:nodejs /app .
+
 USER nestjs
 
-COPY --from=builder /app ../../
-
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+CMD ["node", "/app/apps/api/dist/main.js"]
