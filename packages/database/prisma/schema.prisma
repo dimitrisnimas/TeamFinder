@@ -27,6 +27,25 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum PaymentType {
+  ONLINE
+  ON_SITE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  PRO
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -34,6 +53,8 @@ model User {
   firstName String?
   lastName  String?
   phone     String?
+  avatar    String?
+  bio       String?
   
   roles     Role[]   @default([PLAYER])
 
@@ -46,8 +67,18 @@ model User {
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
   
+  reviewsWritten   Review[]  @relation("WrittenReviews")
+  reviewsReceived  Review[]  @relation("ReceivedReviews")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum PitchStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
 }
 
 model Pitch {
@@ -64,11 +95,19 @@ model Pitch {
   currency    String   @default("EUR")
   
   photos      String[] // URLs
+  facilities  String[] // e.g. "Showers", "Parking"
+  
+  // Rules & Settings
+  status              PitchStatus @default(PENDING)
+  autoApprove         Boolean  @default(false)
+  cancellationHours   Int      @default(24) // Hours before booking to cancel
+  acceptedPaymentTypes PaymentType[]
   
   ownerId     String
   owner       User     @relation("PitchOwner", fields: [ownerId], references: [id])
   
   bookings    Booking[]
+  reviews     Review[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -86,7 +125,12 @@ model Booking {
   endTime   DateTime
   
   status    BookingStatus @default(PENDING)
-  totalPrice Decimal
+  
+  // Payment
+  totalPrice      Decimal
+  commissionFee   Decimal       @default(0) // 5%
+  paymentType     PaymentType   @default(ON_SITE)
+  paymentStatus   PaymentStatus @default(PENDING)
   
   game      Game?
   
@@ -100,6 +144,7 @@ model Game {
   booking   Booking  @relation(fields: [bookingId], references: [id])
   
   type      GameType @default(PUBLIC)
+  skillLevel SkillLevel?
   
   minPlayers Int?
   maxPlayers Int?
@@ -138,6 +183,24 @@ model Message {
   // 1:1 chat
   receiverId String?
   receiver   User?   @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int      // 1-5
+  comment   String?
+  
+  authorId  String
+  author    User     @relation("WrittenReviews", fields: [authorId], references: [id])
+  
+  // Target
+  pitchId   String?
+  pitch     Pitch?   @relation(fields: [pitchId], references: [id])
+  
+  targetUserId String?
+  targetUser   User?   @relation("ReceivedReviews", fields: [targetUserId], references: [id])
   
   createdAt DateTime @default(now())
 }
